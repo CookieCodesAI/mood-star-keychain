@@ -1,6 +1,27 @@
+#This is for ESP32 A, for ESP32 B you have to change all the a --> b and all the b --> a in this file
 from machine import Pin, PWM
 from time import sleep
+from umqttsimple import MQTTClient
 
+def callback(topic, msg):
+    print("Topic:", topic)
+    print("Got the message:", msg)
+    global curr 
+    curr = int(msg)
+    display()
+    
+broker = "broker.hivemq.com"
+client = MQTTClient(
+        client_id = "esp32_a",
+        server = broker
+)
+client.connect()
+client.set_callback(callback)
+client.subscribe(b"esp32/b")
+
+
+
+# Color changing code
 red = PWM(Pin(23), freq=5000)
 green = PWM(Pin(22),freq=5000)
 blue = PWM(Pin(21),freq=5000)
@@ -38,17 +59,25 @@ def display():
     elif colors[curr] == "white":
         set_color(255,255,255)
     elif colors[curr] == "purple":
-        set_color(111, 3, 252)
+        set_color(100, 3, 255)
 
 display()
+last_state = 1
 while True:
+    client.check_msg()
+    curr_state = send.value()
     if color_change.value() == 0:
-        if (curr == 6):
+        if (curr == len(colors)-1):
             curr= 0;
         else:
             curr+=1
         display()
     while color_change.value() == 0:
         pass
+    if last_state ==1 and curr_state == 0:
+        client.publish(b"esp32/a", str(curr))
+        print("value was sent: ",  str(curr))
+    last_state = curr_state
 
     
+
